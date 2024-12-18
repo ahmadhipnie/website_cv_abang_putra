@@ -47,6 +47,7 @@ class Reseller extends Model
         'alamat',
         'nomor_telepon',
         'tanggal_lahir',
+        'foto_profil',
         'user_id', // Kolom yang merujuk ke tabel users
     ];
 

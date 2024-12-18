@@ -86,6 +86,7 @@ class MobileController extends Controller
                     'nomor_telepon' => $reseller->nomor_telepon,
                     'tanggal_lahir' => $reseller->tanggal_lahir,
                     'user_id' => $reseller->user_id,
+                    'foto_profil' => $reseller->foto_profil,
                     'reseller_created_at' => $reseller->created_at,
                     'reseller_updated_at' => $reseller->updated_at,
                 ]

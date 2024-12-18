@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('promos', function (Blueprint $table) {
             $table->bigIncrements('id_promo');
             $table->string('nama_promo');
-            $table->string('deskripsi_promo');
+            $table->text('deskripsi_promo');
             $table->date('tanggal_periode_awal');
             $table->date('tanggal_periode_akhir');
             $table->timestamps();

@@ -17,6 +17,7 @@ return new class extends Migration
             $table->string('alamat');
             $table->string('nomor_telepon');
             $table->date('tanggal_lahir');
+            $table->text('foto_profil')->nullable(false);
             $table->unsignedBigInteger('user_id');
 
             $table->foreign('user_id')->references('id_user')->on('users')->onDelete('cascade');

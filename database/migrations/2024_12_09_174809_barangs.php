@@ -17,7 +17,7 @@ return new class extends Migration
             $table->integer('harga_barang');
             $table->integer('stok_barang');
             $table->text('deskripsi_barang');
-            $table->enum('role', ['Pax', 'Bungkus', 'Lusin', 'Kodi', 'Pcs', 'Box'])->nullable(false);
+            $table->enum('satuan', ['Pax', 'Bungkus', 'Lusin', 'Kodi', 'Pcs', 'Box'])->nullable(false);
             $table->unsignedBigInteger('kategori_id');
 
             $table->foreign('kategori_id')->references('id_kategori')->on('kategoris')->onDelete('cascade');
