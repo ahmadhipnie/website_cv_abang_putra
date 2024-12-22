@@ -21,3 +21,5 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 });
 
 Route::post('/login', [MobileController::class, 'login']);
+Route::get('/getAllKategori', [MobileController::class, 'getAllKategori']);
+Route::get('/getAllBarang', [MobileController::class, 'getAllBarang']);

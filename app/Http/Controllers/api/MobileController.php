@@ -98,4 +98,71 @@ class MobileController extends Controller
             ], 400);
         }
     }
+
+    public function getAllKategori()
+    {
+        try {
+            // Menggunakan Facade DB untuk mengambil semua data dari tabel 'kategoris'
+            $kategoris = DB::table('kategoris')->get();
+
+            // Jika data kategori kosong
+            if ($kategoris->isEmpty()) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Tidak ada data kategori!',
+                ], 404);
+            }
+
+            // Kembalikan response dengan data kategori
+            return response()->json([
+                'status' => 'success',
+                'data' => $kategoris,
+            ], 200);
+        } catch (\Exception $e) {
+            // Tangani error
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Terjadi kesalahan!',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function getAllBarang()
+{
+    try {
+        // Menggunakan Facade DB untuk mengambil data barang beserta nama kategori dan image_url secara acak
+        $barangs = DB::table('barangs')
+            ->join('kategoris', 'barangs.kategori_id', '=', 'kategoris.id_kategori')  // Melakukan join dengan tabel kategoris
+            ->leftJoin('gambar_barangs', 'barangs.id_barang', '=', 'gambar_barangs.barang_id')  // Melakukan left join dengan tabel gambar_barangs
+            ->select('barangs.*', 'kategoris.nama_kategori', DB::raw('MAX(gambar_barangs.gambar_url) as gambar_url'))  // Memilih kolom dari tabel barangs, nama_kategori dari kategoris, dan gambar_url (ambil gambar pertama)
+            ->groupBy('barangs.id_barang', 'kategoris.nama_kategori')  // Grouping berdasarkan barang_id dan nama_kategori
+            ->inRandomOrder()  // Mengambil data secara acak
+            ->get();
+
+        // Jika data barang kosong
+        if ($barangs->isEmpty()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Tidak ada data barang!',
+            ], 404);
+        }
+
+        // Kembalikan response dengan data barang
+        return response()->json([
+            'status' => 'success',
+            'data_barang' => $barangs,
+        ], 200);
+    } catch (\Exception $e) {
+        // Tangani error
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Terjadi kesalahan!',
+            'error' => $e->getMessage(),
+        ], 500);
+    }
+}
+
+
+
 }
