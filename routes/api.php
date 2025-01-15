@@ -16,9 +16,7 @@ use App\Http\Controllers\api\MobileController;
 |
 */
 
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    return $request->user();
-});
+
 
 Route::post('/login', [MobileController::class, 'login']);
 Route::get('/getAllKategori', [MobileController::class, 'getAllKategori']);
@@ -34,3 +32,11 @@ Route::post('/kirimFeedbackReseller', [MobileController::class, 'kirimFeedbackRe
 Route::get('/getAllFeedback', [MobileController::class, 'getAllFeedback']);
 Route::get('/getAllPromo', [MobileController::class, 'getAllPromo']);
 Route::post('/updateUserReseller', [MobileController::class, 'updateUserReseller']);
+Route::post('/deletePromo', [MobileController::class, 'deletePromo']);
+Route::post('/deleteBarang', [MobileController::class, 'deleteBarang']);
+Route::post('/updateStokBarang', [MobileController::class, 'updateStokBarang']);
+Route::post('/addKategori', [MobileController::class, 'addKategori']);
+Route::post('/updatePassword', [MobileController::class, 'updatePassword']);
+Route::post('/addUserAndReseller', [MobileController::class, 'addUserAndReseller']);
+Route::post('/addBarang', [MobileController::class, 'addBarang']);
+Route::post('/addPromo', [MobileController::class, 'addPromo']);

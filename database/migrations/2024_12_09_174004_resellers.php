@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('resellers', function (Blueprint $table) {
             $table->bigIncrements('id_reseller');
             $table->string('nama');
-            $table->string('alamat');
+            $table->string('alamat')->nullable(true);
             $table->string('nomor_telepon');
             $table->date('tanggal_lahir');
             $table->text('foto_profil')->nullable(false);

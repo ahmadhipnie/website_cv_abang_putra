@@ -3,12 +3,16 @@
 namespace App\Http\Controllers\api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Barang;
+use App\Models\GambarBarang;
 use Illuminate\Http\Request;
 use App\Models\User; // Model User
 use App\Models\Reseller; // Model Reseller
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use App\Models\Promo;
+use App\Models\GambarPromo;
 
 
 class MobileController extends Controller
@@ -105,9 +109,9 @@ class MobileController extends Controller
     public function getAllKategori()
     {
         try {
-            // Menggunakan Facade DB untuk mengambil semua data dari tabel 'kategoris'
+            // Menggunakan LEFT JOIN untuk memastikan kategori tanpa barang juga ditampilkan
             $kategoris = DB::table('kategoris')
-                ->join('barangs', 'kategoris.id_kategori', '=', 'barangs.kategori_id')
+                ->leftJoin('barangs', 'kategoris.id_kategori', '=', 'barangs.kategori_id')
                 ->select('kategoris.*', DB::raw('COUNT(barangs.kategori_id) as jumlah_barang'))
                 ->groupBy('kategoris.id_kategori')
                 ->get();
@@ -134,6 +138,7 @@ class MobileController extends Controller
             ], 500);
         }
     }
+
 
     public function getAllBarang()
     {
@@ -201,7 +206,7 @@ class MobileController extends Controller
             ], 500);
         }
     }
-   
+
 
     public function getAllFeedback()
 {
@@ -701,5 +706,445 @@ class MobileController extends Controller
             ], 500);
         }
     }
+
+    public function deletePromo(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'id_promo' => 'required|integer|exists:promos,id_promo',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Validation error',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $id_promo = $request->input('id_promo');
+
+        DB::beginTransaction();
+        try {
+            // Delete associated images
+            GambarPromo::where('promo_id', $id_promo)->delete();
+
+            // Delete the promo
+            Promo::where('id_promo', $id_promo)->delete();
+
+            DB::commit();
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Promo and associated images deleted successfully',
+            ], 200);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to delete promo!',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+    public function deleteBarang(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'id_barang' => 'required|integer|exists:barangs,id_barang',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Validation error',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $id_barang = $request->input('id_barang');
+
+        DB::beginTransaction();
+        try {
+            // Delete associated images
+            GambarBarang::where('barang_id', $id_barang)->delete();
+
+            // Delete the barang
+            Barang::where('id_barang', $id_barang)->delete();
+
+            DB::commit();
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Promo and associated images deleted successfully',
+            ], 200);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to delete promo!',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function updateStokBarang(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'id_barang' => 'required|integer|exists:barangs,id_barang',
+            'stok_barang' => 'required|integer|min:0',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Validation error',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $id_barang = $request->input('id_barang');
+        $stok_barang = $request->input('stok_barang');
+
+        DB::beginTransaction();
+        try {
+            // Update the stok_barang
+            Barang::where('id_barang', $id_barang)->update(['stok_barang' => $stok_barang]);
+
+            DB::commit();
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Stok barang updated successfully',
+            ], 200);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to update stok barang!',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function addKategori(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'nama_kategori' => 'required|string|max:255',
+            'image_url' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Validation error',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        DB::beginTransaction();
+        try {
+            // Handle the image upload
+            if ($request->hasFile('image_url')) {
+                $image = $request->file('image_url');
+                $imageName = time() . '.' . $image->getClientOriginalExtension();
+                $imagePath = $image->storeAs('foto_kategori', $imageName, 'public');
+                $imageUrl = 'storage/' . $imagePath;
+            }
+
+            // Insert the new category
+            DB::table('kategoris')->insert([
+                'nama_kategori' => $request->input('nama_kategori'),
+                'image_url' => $imageUrl,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            DB::commit();
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Kategori added successfully',
+            ], 200);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to add kategori!',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function updatePassword(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'id_user' => 'required|integer|exists:users,id_user',
+            'password' => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Validation error',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $id_user = $request->input('id_user');
+        $password = $request->input('password');
+
+        DB::beginTransaction();
+        try {
+            // Update the password
+            DB::table('users')->where('id_user', $id_user)->update(['password' => $password]);
+
+            DB::commit();
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Password updated successfully',
+            ], 200);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to update password!',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function addUserAndReseller(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|string|email|max:255|unique:users',
+            'password' => 'required|string',
+            'nama' => 'required|string|max:255',
+            'nomor_telepon' => 'required|string|max:15',
+            'tanggal_lahir' => 'required|date',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Validation error',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        DB::beginTransaction();
+        try {
+            // Insert the new user
+            $userId = DB::table('users')->insertGetId([
+                'email' => $request->input('email'),
+                'password' => $request->input('password'),
+                'role' => 'reseller',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            // Insert the new reseller
+            DB::table('resellers')->insert([
+                'nama' => $request->input('nama'),
+                'nomor_telepon' => $request->input('nomor_telepon'),
+                'tanggal_lahir' => $request->input('tanggal_lahir'),
+                'alamat' => 'batam',
+                'foto_profil' => 'storage/foto_profil_reseller/foto_profil_asd.jpeg',
+                'user_id' => $userId,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            DB::commit();
+            return response()->json([
+                'status' => 'success',
+                'message' => 'User and reseller added successfully',
+            ], 200);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to add user and reseller!',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function addBarang(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'nama_barang' => 'required|string|max:255',
+            'harga_barang' => 'required|integer',
+            'stok_barang' => 'required|integer',
+            'deskripsi_barang' => 'required|string',
+            'satuan' => 'required|string|max:50',
+            'kategori_id' => 'required|integer|exists:kategoris,id_kategori',
+            'gambar_url_1' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'gambar_url_2' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'gambar_url_3' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Validation error',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        DB::beginTransaction();
+        try {
+            // Insert the new barang
+            $barangId = DB::table('barangs')->insertGetId([
+                'nama_barang' => $request->input('nama_barang'),
+                'harga_barang' => $request->input('harga_barang'),
+                'stok_barang' => $request->input('stok_barang'),
+                'deskripsi_barang' => $request->input('deskripsi_barang'),
+                'satuan' => $request->input('satuan'),
+                'kategori_id' => $request->input('kategori_id'),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            // Handle the image uploads
+            for ($i = 1; $i <= 3; $i++) {
+                $imageKey = 'gambar_url_' . $i;
+                if ($request->hasFile($imageKey)) {
+                    $image = $request->file($imageKey);
+                    $imageName = time() . '_' . $image->getClientOriginalName();
+                    $imagePath = $image->storeAs('foto_barang', $imageName, 'public');
+                    $imageUrl = 'storage/' . $imagePath;
+
+                    // Insert the new gambar_barang
+                    DB::table('gambar_barangs')->insert([
+                        'gambar_url' => $imageUrl,
+                        'barang_id' => $barangId,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+            }
+
+            DB::commit();
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Barang and images added successfully',
+            ], 200);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to add barang and images!',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function addPromo(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'nama_promo' => 'required|string|max:255',
+            'deskripsi_promo' => 'required|string',
+            'tanggal_periode_awal' => 'required|date',
+            'tanggal_periode_akhir' => 'required|date',
+            'gambar_url_1' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'gambar_url_2' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'gambar_url_3' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Validation error',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        DB::beginTransaction();
+        try {
+            // Insert the new barang
+            $promoId = DB::table('promos')->insertGetId([
+                'nama_promo' => $request->input('nama_promo'),
+                'deskripsi_promo' => $request->input('deskripsi_promo'),
+                'tanggal_periode_awal' => $request->input('tanggal_periode_awal'),
+                'tanggal_periode_akhir' => $request->input('tanggal_periode_akhir'),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            // Handle the image uploads
+            for ($i = 1; $i <= 3; $i++) {
+                $imageKey = 'gambar_url_' . $i;
+                if ($request->hasFile($imageKey)) {
+                    $image = $request->file($imageKey);
+                    $imageName = time() . '_' . $image->getClientOriginalName();
+                    $imagePath = $image->storeAs('foto_promo', $imageName, 'public');
+                    $imageUrl = 'storage/' . $imagePath;
+
+                    // Insert the new gambar_barang
+                    DB::table('gambar_promos')->insert([
+                        'gambar_url' => $imageUrl,
+                        'promo_id' => $promoId,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+            }
+
+            DB::commit();
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Promo and images added successfully',
+            ], 200);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to add promo and images!',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function deleteKategori(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'id_kategori' => 'required|integer|exists:kategoris,id_kategori',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Validation error',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $id_kategori = $request->input('id_kategori');
+
+        DB::beginTransaction();
+        try {
+            // Get all barang ids related to the kategori
+            $barangIds = DB::table('barangs')->where('kategori_id', $id_kategori)->pluck('id_barang');
+
+            // Delete associated images
+            DB::table('gambar_barangs')->whereIn('barang_id', $barangIds)->delete();
+
+            // Delete the barangs
+            DB::table('barangs')->where('kategori_id', $id_kategori)->delete();
+
+            // Delete the kategori
+            DB::table('kategoris')->where('id_kategori', $id_kategori)->delete();
+
+            DB::commit();
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Kategori and related data deleted successfully',
+            ], 200);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to delete kategori and related data!',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+
 
 }
