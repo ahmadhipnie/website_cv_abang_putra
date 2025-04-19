@@ -40,3 +40,5 @@ Route::post('/updatePassword', [MobileController::class, 'updatePassword']);
 Route::post('/addUserAndReseller', [MobileController::class, 'addUserAndReseller']);
 Route::post('/addBarang', [MobileController::class, 'addBarang']);
 Route::post('/addPromo', [MobileController::class, 'addPromo']);
+
+Route::post('/deleteKategoriWithCheck', [MobileController::class, 'deleteKategoriWithCheck']);

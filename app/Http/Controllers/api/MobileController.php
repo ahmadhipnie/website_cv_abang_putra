@@ -1145,6 +1145,48 @@ class MobileController extends Controller
         }
     }
 
+    public function deleteKategoriWithCheck(Request $request)
+{
+    $validator = Validator::make($request->all(), [
+        'id_kategori' => 'required|integer|exists:kategoris,id_kategori',
+    ]);
+
+    if ($validator->fails()) {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Validation error',
+            'errors' => $validator->errors(),
+        ], 422);
+    }
+
+    $id_kategori = $request->input('id_kategori');
+
+    try {
+        // Cek apakah ada barang yang berelasi dengan kategori
+        $barangCount = DB::table('barangs')->where('kategori_id', $id_kategori)->count();
+
+        if ($barangCount > 0) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Kategori tidak dapat dihapus karena masih ada barang yang berelasi dengan kategori ini!',
+            ], 400);
+        }
+
+        // Hapus kategori jika tidak ada barang yang berelasi
+        DB::table('kategoris')->where('id_kategori', $id_kategori)->delete();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Kategori berhasil dihapus!',
+        ], 200);
+    } catch (\Exception $e) {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Terjadi kesalahan saat menghapus kategori!',
+            'error' => $e->getMessage(),
+        ], 500);
+    }
+}
 
 
 }
