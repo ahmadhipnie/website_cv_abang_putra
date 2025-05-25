@@ -42,3 +42,6 @@ Route::post('/addBarang', [MobileController::class, 'addBarang']);
 Route::post('/addPromo', [MobileController::class, 'addPromo']);
 
 Route::post('/deleteKategoriWithCheck', [MobileController::class, 'deleteKategoriWithCheck']);
+Route::post('/updateKategori', [MobileController::class, 'updateKategori']);
+Route::post('/updateBarang', [MobileController::class, 'updateBarang']);
+Route::post('/updatePromo', [MobileController::class, 'updatePromo']);
