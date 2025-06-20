@@ -23,7 +23,6 @@ class Transaksi extends Model
         'jumlah_barang',
         'total_harga',
         'jenis_pengiriman',
-        'alamat_pengiriman',
         'status',
     ];
 

@@ -1188,6 +1188,231 @@ class MobileController extends Controller
     }
 }
 
+public function updateKategori(Request $request)
+{
+    $validator = Validator::make($request->all(), [
+        'id_kategori' => 'required|integer|exists:kategoris,id_kategori',
+        'nama_kategori' => 'required|string|max:255',
+        'image_url' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+    ]);
+
+    if ($validator->fails()) {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Validation error',
+            'errors' => $validator->errors(),
+        ], 422);
+    }
+
+    $id_kategori = $request->input('id_kategori');
+
+    DB::beginTransaction();
+    try {
+        // Ambil data kategori lama
+        $kategori = DB::table('kategoris')->where('id_kategori', $id_kategori)->first();
+
+        if (!$kategori) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Kategori tidak ditemukan!',
+            ], 404);
+        }
+
+        $imageUrl = $kategori->image_url; // Simpan URL gambar lama
+
+        // Jika ada file baru yang diunggah
+        if ($request->hasFile('image_url')) {
+            $image = $request->file('image_url');
+            $imageName = time() . '.' . $image->getClientOriginalExtension();
+            $imagePath = $image->storeAs('foto_kategori', $imageName, 'public');
+            $imageUrl = 'storage/' . $imagePath;
+
+            // Hapus file lama jika ada
+            if ($kategori->image_url && Storage::exists(str_replace('storage/', 'public/', $kategori->image_url))) {
+                Storage::delete(str_replace('storage/', 'public/', $kategori->image_url));
+            }
+        }
+
+        // Update data kategori
+        DB::table('kategoris')->where('id_kategori', $id_kategori)->update([
+            'nama_kategori' => $request->input('nama_kategori'),
+            'image_url' => $imageUrl,
+            'updated_at' => now(),
+        ]);
+
+        DB::commit();
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Kategori berhasil diperbarui!',
+        ], 200);
+    } catch (\Exception $e) {
+        DB::rollBack();
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Terjadi kesalahan saat memperbarui kategori!',
+            'error' => $e->getMessage(),
+        ], 500);
+    }
+}
+
+public function updateBarang(Request $request)
+{
+    $validator = Validator::make($request->all(), [
+        'id_barang' => 'required|integer|exists:barangs,id_barang',
+        'nama_barang' => 'required|string|max:255',
+        'harga_barang' => 'required|integer',
+        'stok_barang' => 'required|integer',
+        'deskripsi_barang' => 'required|string',
+        'satuan' => 'required|string|max:50',
+        'kategori_id' => 'required|integer|exists:kategoris,id_kategori',
+        'gambar_url_1' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+        'gambar_url_2' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+        'gambar_url_3' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+    ]);
+
+    if ($validator->fails()) {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Validation error',
+            'errors' => $validator->errors(),
+        ], 422);
+    }
+
+    $id_barang = $request->input('id_barang');
+
+    DB::beginTransaction();
+    try {
+        // Update data barang
+        DB::table('barangs')->where('id_barang', $id_barang)->update([
+            'nama_barang' => $request->input('nama_barang'),
+            'harga_barang' => $request->input('harga_barang'),
+            'stok_barang' => $request->input('stok_barang'),
+            'deskripsi_barang' => $request->input('deskripsi_barang'),
+            'satuan' => $request->input('satuan'),
+            'kategori_id' => $request->input('kategori_id'),
+            'updated_at' => now(),
+        ]);
+
+        // Hapus gambar lama dari tabel gambar_barangs
+        $oldImages = DB::table('gambar_barangs')->where('barang_id', $id_barang)->get();
+        foreach ($oldImages as $image) {
+            if (Storage::exists(str_replace('storage/', 'public/', $image->gambar_url))) {
+                Storage::delete(str_replace('storage/', 'public/', $image->gambar_url));
+            }
+        }
+        DB::table('gambar_barangs')->where('barang_id', $id_barang)->delete();
+
+        // Tambahkan gambar baru jika ada
+        for ($i = 1; $i <= 3; $i++) {
+            $imageKey = 'gambar_url_' . $i;
+            if ($request->hasFile($imageKey)) {
+                $image = $request->file($imageKey);
+                $imageName = time() . '_' . $image->getClientOriginalName();
+                $imagePath = $image->storeAs('foto_barang', $imageName, 'public');
+                $imageUrl = 'storage/' . $imagePath;
+
+                // Simpan gambar baru ke tabel gambar_barangs
+                DB::table('gambar_barangs')->insert([
+                    'gambar_url' => $imageUrl,
+                    'barang_id' => $id_barang,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+        }
+
+        DB::commit();
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Barang and images updated successfully',
+        ], 200);
+    } catch (\Exception $e) {
+        DB::rollBack();
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Failed to update barang and images!',
+            'error' => $e->getMessage(),
+        ], 500);
+    }
+}
+
+public function updatePromo(Request $request)
+{
+    $validator = Validator::make($request->all(), [
+        'id_promo' => 'required|integer|exists:promos,id_promo',
+        'nama_promo' => 'required|string|max:255',
+        'deskripsi_promo' => 'required|string',
+        'tanggal_periode_awal' => 'required|date',
+        'tanggal_periode_akhir' => 'required|date',
+        'gambar_url_1' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+        'gambar_url_2' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+        'gambar_url_3' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+    ]);
+
+    if ($validator->fails()) {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Validation error',
+            'errors' => $validator->errors(),
+        ], 422);
+    }
+
+    $id_promo = $request->input('id_promo');
+
+    DB::beginTransaction();
+    try {
+        // Update data promo
+        DB::table('promos')->where('id_promo', $id_promo)->update([
+            'nama_promo' => $request->input('nama_promo'),
+            'deskripsi_promo' => $request->input('deskripsi_promo'),
+            'tanggal_periode_awal' => $request->input('tanggal_periode_awal'),
+            'tanggal_periode_akhir' => $request->input('tanggal_periode_akhir'),
+            'updated_at' => now(),
+        ]);
+
+        // Hapus gambar lama dari tabel gambar_promos
+        $oldImages = DB::table('gambar_promos')->where('promo_id', $id_promo)->get();
+        foreach ($oldImages as $image) {
+            if (Storage::exists(str_replace('storage/', 'public/', $image->gambar_url))) {
+                Storage::delete(str_replace('storage/', 'public/', $image->gambar_url));
+            }
+        }
+        DB::table('gambar_promos')->where('promo_id', $id_promo)->delete();
+
+        // Tambahkan gambar baru jika ada
+        for ($i = 1; $i <= 3; $i++) {
+            $imageKey = 'gambar_url_' . $i;
+            if ($request->hasFile($imageKey)) {
+                $image = $request->file($imageKey);
+                $imageName = $image->getClientOriginalName();
+                $imagePath = $image->storeAs('foto_promo', $imageName, 'public');
+                $imageUrl = 'storage/' . $imagePath;
+
+                // Simpan gambar baru ke tabel gambar_promos
+                DB::table('gambar_promos')->insert([
+                    'gambar_url' => $imageUrl,
+                    'promo_id' => $id_promo,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+        }
+
+        DB::commit();
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Promo and images updated successfully',
+        ], 200);
+    } catch (\Exception $e) {
+        DB::rollBack();
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Failed to update promo and images!',
+            'error' => $e->getMessage(),
+        ], 500);
+    }
+}
+
 
  public function addTransaksi(Request $request)
     {
