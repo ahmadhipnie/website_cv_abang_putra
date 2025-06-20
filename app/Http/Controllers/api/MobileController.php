@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use App\Models\Promo;
 use App\Models\GambarPromo;
-
+use App\Models\Transaksi;
 
 class MobileController extends Controller
 {
@@ -1183,6 +1183,174 @@ class MobileController extends Controller
         return response()->json([
             'status' => 'error',
             'message' => 'Terjadi kesalahan saat menghapus kategori!',
+            'error' => $e->getMessage(),
+        ], 500);
+    }
+}
+
+
+ public function addTransaksi(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'user_id' => 'required|integer|exists:users,id_user',
+            'barang_id' => 'required|integer|exists:barangs,id_barang',
+            'jumlah_barang' => 'required|integer|min:1',
+            'total_harga' => 'required|integer|min:0',
+            'jenis_pengiriman' => 'required|string|max:255',
+            'alamat_pengiriman' => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => $validator->errors()
+            ], 422);
+        }
+
+        DB::beginTransaction();
+        try {
+            // Ambil barang
+            $barang = Barang::find($request->barang_id);
+
+            // Cek stok cukup
+            if ($barang->stok_barang < $request->jumlah_barang) {
+                DB::rollBack();
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Stok barang tidak cukup!',
+                ], 400);
+            }
+
+            // Kurangi stok
+            $barang->stok_barang -= $request->jumlah_barang;
+            $barang->save();
+
+            // Simpan transaksi
+            Transaksi::create([
+                'user_id' => $request->user_id,
+                'barang_id' => $request->barang_id,
+                'jumlah_barang' => $request->jumlah_barang,
+                'total_harga' => $request->total_harga,
+                'jenis_pengiriman' => $request->jenis_pengiriman,
+                'alamat_pengiriman' => $request->alamat_pengiriman,
+                'status' => 'diproses',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            DB::commit();
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Transaksi berhasil ditambahkan',
+            ], 201);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Gagal menambahkan transaksi!',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    // API untuk mengubah status transaksi
+    public function updateStatusTransaksi(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'id' => 'required|integer|exists:transaksis,id',
+            'status' => 'required|string|max:50',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Validation error',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            $transaksi = Transaksi::find($request->id);
+            $transaksi->status = $request->status;
+            $transaksi->save();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Status transaksi berhasil diubah',
+                'data' => $transaksi,
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Gagal mengubah status transaksi!',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function getAllTransaksi()
+{
+    try {
+        $transaksis = Transaksi::with(['user', 'barang'])->orderByDesc('created_at')->get();
+
+        if ($transaksis->isEmpty()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Tidak ada data transaksi!',
+                'data' => [],
+            ], 404);
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $transaksis,
+        ], 200);
+    } catch (\Exception $e) {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Terjadi kesalahan!',
+            'error' => $e->getMessage(),
+        ], 500);
+    }
+}
+
+// Ambil transaksi berdasarkan user_id
+public function getTransaksiByUserId(Request $request)
+{
+    $validator = Validator::make($request->all(), [
+        'user_id' => 'required|integer|exists:users,id_user',
+    ]);
+
+    if ($validator->fails()) {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Validation error',
+            'errors' => $validator->errors(),
+        ], 422);
+    }
+
+    try {
+        $transaksis = Transaksi::with(['user', 'barang'])
+            ->where('user_id', $request->user_id)
+            ->orderByDesc('created_at')
+            ->get();
+
+        if ($transaksis->isEmpty()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Tidak ada transaksi untuk user ini!',
+                'data' => [],
+            ], 404);
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $transaksis,
+        ], 200);
+    } catch (\Exception $e) {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Terjadi kesalahan!',
             'error' => $e->getMessage(),
         ], 500);
     }

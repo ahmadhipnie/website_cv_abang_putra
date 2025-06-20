@@ -41,4 +41,10 @@ Route::post('/addUserAndReseller', [MobileController::class, 'addUserAndReseller
 Route::post('/addBarang', [MobileController::class, 'addBarang']);
 Route::post('/addPromo', [MobileController::class, 'addPromo']);
 
+Route::post('/addTransaksi', [MobileController::class, 'addTransaksi']);
+Route::get('/getAllTransaksi', [MobileController::class, 'getAllTransaksi']);
+Route::post('/getTransaksiByUserId', [MobileController::class, 'getTransaksiByUserId']);
+Route::post('/updateStatusTransaksi', [MobileController::class, 'updateStatusTransaksi']);
+
+
 Route::post('/deleteKategoriWithCheck', [MobileController::class, 'deleteKategoriWithCheck']);
